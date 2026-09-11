@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RAG Evaluation Dashboard — CentrixSupport</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ── */
+    .navbar { display:flex; align-items:center; justify-content:space-between; padding:12px 24px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+    .nav-brand { display:flex; align-items:center; gap:10px; font-size:1.1rem; font-weight:700; color:var(--accent); }
+    .nav-links { display:flex; gap:16px; font-size:.875rem; }
+    .nav-links a { color:var(--muted); }
+    .nav-links a:hover { color:var(--text); }
+
+    .page { max-width:1440px; margin:0 auto; padding:24px 20px; }
+    .page-title { font-size:1.5rem; font-weight:700; margin-bottom:4px; }
+    .page-sub  { color:var(--muted); font-size:.875rem; margin-bottom:20px; }
+
+    /* ── Summary cards ── */
+    .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; margin-bottom:24px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .card-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; }
+    .card-value { font-size:1.6rem; font-weight:700; line-height:1; }
+    .card-value.accent  { color:var(--accent); }
+    .card-value.accent2 { color:var(--accent2); }
+    .card-value.warn    { color:var(--warn); }
+    .card-value.green   { color:var(--green); }
+    .card-value.red     { color:var(--red); }
+    .card-unit { font-size:.75rem; color:var(--muted); margin-top:4px; }
+
+    /* ── Toolbar ── */
+    .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .toolbar input { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:7px 12px; font-size:.85rem; width:240px; }
+    .toolbar input:focus { outline:none; border-color:var(--accent); }
+    .btn { padding:7px 16px; border-radius:7px; border:none; cursor:pointer; font-size:.85rem; font-weight:600; transition:opacity .15s; }
+    .btn:hover { opacity:.85; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-danger  { background:var(--danger); color:#fff; }
+    .btn-ghost   { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+    .auto-badge { font-size:.72rem; padding:3px 8px; border-radius:20px; background:#1a2e20; color:var(--green); border:1px solid #166534; }
+    #status-dot { width:9px; height:9px; border-radius:50%; background:var(--green); display:inline-block; margin-right:4px; }
+    #status-dot.off { background:var(--muted); }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:10px; }
+    table { width:100%; border-collapse:collapse; font-size:.8rem; }
+    thead th { background:var(--surface2); padding:10px 12px; text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border); transition:background .1s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:var(--surface2); }
+    td { padding:9px 12px; vertical-align:top; }
+    .td-query { max-width:220px; }
+    .td-query span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; cursor:help; }
+    .badge { display:inline-block; padding:2px 7px; border-radius:12px; font-size:.68rem; font-weight:600; }
+    .badge-hit    { background:#0f2d1f; color:var(--green); }
+    .badge-miss   { background:#2d1515; color:var(--red); }
+    .badge-tool   { background:#1e1b40; color:#a78bfa; }
+    .badge-mode   { background:#1a2e20; color:var(--accent2); }
+    .scores-pill  { display:inline-block; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:.67rem; color:var(--accent2); margin:1px; }
+    .no-data { text-align:center; padding:48px; color:var(--muted); font-size:.9rem; }
+
+    /* ── Groundedness badges ── */
+    .badge-fully     { background:#0a2d1a; color:#4ade80; border:1px solid #166534; }
+    .badge-partial   { background:#2d1f00; color:#fbbf24; border:1px solid #92400e; }
+    .badge-unsup     { background:#2d0f0f; color:#f87171; border:1px solid #991b1b; }
+    .badge-na        { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+    .gnd-bar-wrap    { width:72px; height:6px; background:var(--surface2); border-radius:4px; display:inline-block; vertical-align:middle; margin-left:4px; }
+    .gnd-bar         { height:100%; border-radius:4px; transition:width .3s; }
+    .gnd-score-cell  { white-space:nowrap; }
+    /* card highlight for groundedness section */
+    .card.gnd-card   { border-color: #166534; }
+
+    /* ── Detail panel ── */
+    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:200; align-items:center; justify-content:center; }
+    .detail-overlay.open { display:flex; }
+    .detail-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; width:min(680px, 96vw); max-height:86vh; overflow-y:auto; padding:24px; position:relative; }
+    .detail-close { position:absolute; top:14px; right:18px; background:none; border:none; color:var(--muted); font-size:1.3rem; cursor:pointer; }
+    .detail-close:hover { color:var(--text); }
+    .detail-title { font-size:1rem; font-weight:700; margin-bottom:16px; color:var(--accent); }
+    .detail-row { display:flex; gap:8px; margin-bottom:10px; font-size:.83rem; flex-wrap:wrap; }
+    .detail-key { color:var(--muted); min-width:180px; flex-shrink:0; }
+    .detail-val { color:var(--text); word-break:break-word; flex:1; }
+    .detail-section { margin:14px 0 6px; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:4px; }
+
+    /* ── Pagination ── */
+    .pagination { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-top:12px; font-size:.82rem; color:var(--muted); }
+    .pagination .btn { padding:5px 12px; font-size:.82rem; }
+    .loading { text-align:center; padding:32px; color:var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    RAG Evaluation Dashboard
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('index') }}">Chat</a>
+    <a href="{{ url_for('health') }}">Health</a>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="page">
+  <div class="page-title">RAG Pipeline Evaluation</div>
+  <p class="page-sub">Live per-query metrics — query classification · cache · retrieval · reranking · LLM · cost · groundedness</p>
+
+  <!-- Summary cards -->
+  <div class="cards" id="summary-cards">
+    <div class="card"><div class="card-label">Total Queries</div><div class="card-value accent" id="s-total">—</div></div>
+    <div class="card"><div class="card-label">Cache Hit Rate</div><div class="card-value green" id="s-hit-rate">—</div><div class="card-unit">%</div></div>
+    <div class="card"><div class="card-label">Avg Retrieval</div><div class="card-value accent2" id="s-ret-ms">—</div><div class="card-unit">ms</div></div>
+    <div class="card"><div class="card-label">Avg LLM Latency</div><div class="card-value warn" id="s-llm-ms">—</div><div class="card-unit">ms</div></div>
+    <div class="card"><div class="card-label">Avg Total Latency</div><div class="card-value accent" id="s-total-ms">—</div><div class="card-unit">ms</div></div>
+    <div class="card"><div class="card-label">Max Latency</div><div class="card-value red" id="s-max-ms">—</div><div class="card-unit">ms</div></div>
+    <div class="card"><div class="card-label">Total Tokens</div><div class="card-value accent2" id="s-tokens">—</div></div>
+    <div class="card"><div class="card-label">Total Cost</div><div class="card-value warn" id="s-cost">—</div><div class="card-unit">USD</div></div>
+    <div class="card"><div class="card-label">Avg Docs Retrieved</div><div class="card-value accent" id="s-docs">—</div></div>
+    <div class="card"><div class="card-label">Avg Final Chunks</div><div class="card-value accent2" id="s-chunks">—</div></div>
+    <div class="card gnd-card"><div class="card-label">Avg Groundedness</div><div class="card-value green" id="s-gnd-avg">—</div><div class="card-unit">% (docs queries)</div></div>
+    <div class="card gnd-card"><div class="card-label">Fully Supported</div><div class="card-value green" id="s-gnd-full">—</div><div class="card-unit">queries</div></div>
+    <div class="card gnd-card"><div class="card-label">Unsupported</div><div class="card-value red" id="s-gnd-unsup">—</div><div class="card-unit">queries</div></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span><span id="status-dot"></span><span id="status-text" style="font-size:.8rem;color:var(--muted)">Loading…</span></span>
+    <span class="auto-badge" id="auto-badge">● Auto-refresh 15s</span>
+    <input type="text" id="session-filter" placeholder="Filter by session name…" />
+    <button class="btn btn-primary" onclick="loadMetrics()">Refresh</button>
+    <button class="btn btn-ghost"   onclick="toggleAutoRefresh()">Pause</button>
+    <button class="btn btn-danger"  onclick="clearMetrics()">Clear All</button>
+    <span id="total-count" style="font-size:.8rem;color:var(--muted);margin-left:auto"></span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Timestamp</th>
+          <th>Query</th>
+          <th>Classification</th>
+          <th>Mode</th>
+          <th>Tool Used</th>
+          <th>Cache</th>
+          <th>Retrieval ms</th>
+          <th>Docs Retrieved</th>
+          <th>Top Similarity</th>
+          <th>Reranker</th>
+          <th>Top Reranker</th>
+          <th>Final Chunks</th>
+          <th>LLM ms</th>
+          <th>Total ms</th>
+          <th>Prompt Tok</th>
+          <th>Completion Tok</th>
+          <th>Total Tok</th>
+          <th>Est. Cost $</th>
+          <th>Language</th>
+          <th>Emotion</th>
+          <th>Groundedness</th>
+        </tr>
+      </thead>
+      <tbody id="metrics-body">
+        <tr><td colspan="22" class="loading">Loading metrics…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    <button class="btn btn-ghost" id="btn-prev" onclick="prevPage()" disabled>← Prev</button>
+    <span id="page-info">Page 1</span>
+    <button class="btn btn-ghost" id="btn-next" onclick="nextPage()">Next →</button>
+  </div>
+</div>
+
+<!-- Detail overlay -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-box" id="detail-box">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div class="detail-title">Query Detail</div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 50;
+let currentPage = 0;
+let totalRecords = 0;
+let autoRefreshTimer = null;
+let autoRefreshEnabled = true;
+let allRecords = [];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmt(v, digits = 1) {
+  if (v == null || v === '' || v === undefined) return '—';
+  const n = parseFloat(v);
+  return isNaN(n) ? '—' : n.toFixed(digits);
+}
+function fmtInt(v) {
+  if (v == null) return '—';
+  const n = parseInt(v);
+  return isNaN(n) ? '—' : n.toLocaleString();
+}
+function fmtTs(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('en-IN', { hour12: false });
+}
+function truncate(s, n = 60) {
+  if (!s) return '—';
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+function scoreList(arr) {
+  if (!arr || !arr.length) return '—';
+  return arr.slice(0, 5).map(s => `<span class="scores-pill">${parseFloat(s).toFixed(3)}</span>`).join('');
+}
+function cacheBadge(hit) {
+  return hit
+    ? '<span class="badge badge-hit">HIT</span>'
+    : '<span class="badge badge-miss">MISS</span>';
+}
+function toolBadge(t)  { return `<span class="badge badge-tool">${t || '—'}</span>`; }
+function modeBadge(m)  { return `<span class="badge badge-mode">${m || '—'}</span>`; }
+function rerankerBadge(used) {
+  return used
+    ? '<span class="badge badge-mode">Yes</span>'
+    : '<span style="color:var(--muted);font-size:.75rem">No</span>';
+}
+function gndBadge(verdict, score) {
+  // score is 0-1 float from DB; -1 means not evaluated
+  if (score == null || score < 0) {
+    return '<span class="badge badge-na">N/A</span>';
+  }
+  const pct = Math.round(score * 100);
+  const barColor = pct >= 80 ? '#4ade80' : pct >= 50 ? '#fbbf24' : '#f87171';
+  let cls = 'badge-na', label = verdict || 'N/A';
+  if (verdict === 'fully_supported')     { cls = 'badge-fully';   label = `✓ ${pct}%`; }
+  else if (verdict === 'partially_supported') { cls = 'badge-partial'; label = `~ ${pct}%`; }
+  else if (verdict === 'unsupported')    { cls = 'badge-unsup';   label = `✗ ${pct}%`; }
+  return `<span class="badge ${cls}">${label}</span>`
+       + `<span class="gnd-bar-wrap"><span class="gnd-bar" style="width:${pct}%;background:${barColor}"></span></span>`;
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  const session = document.getElementById('session-filter').value.trim();
+  const offset  = currentPage * PAGE_SIZE;
+  let url = `/dashboard/api/metrics?limit=${PAGE_SIZE}&offset=${offset}`;
+  if (session) url += `&session=${encodeURIComponent(session)}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.success) { setStatus('Error: ' + data.error, false); return; }
+
+    allRecords = data.records || [];
+    totalRecords = data.total || 0;
+    renderSummary(data.summary || {});
+    renderTable(allRecords);
+    renderPagination();
+    setStatus(`Last updated ${new Date().toLocaleTimeString()}`, true);
+    document.getElementById('total-count').textContent = `${totalRecords.toLocaleString()} total records`;
+  } catch (e) {
+    setStatus('Fetch failed: ' + e.message, false);
+  }
+}
+
+function setStatus(msg, ok) {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  dot.className = ok ? '' : 'off';
+}
+
+// ── Summary cards ─────────────────────────────────────────────────────────────
+function renderSummary(s) {
+  document.getElementById('s-total').textContent    = fmtInt(s.total_queries);
+  document.getElementById('s-hit-rate').textContent = fmt(s.cache_hit_rate, 1);
+  document.getElementById('s-ret-ms').textContent   = fmt(s.avg_retrieval_ms, 1);
+  document.getElementById('s-llm-ms').textContent   = fmt(s.avg_llm_ms, 1);
+  document.getElementById('s-total-ms').textContent = fmt(s.avg_total_ms, 1);
+  document.getElementById('s-max-ms').textContent   = fmt(s.max_total_ms, 1);
+  document.getElementById('s-tokens').textContent   = fmtInt(s.total_tokens_used);
+  document.getElementById('s-cost').textContent     = s.total_cost_usd != null ? parseFloat(s.total_cost_usd).toFixed(6) : '—';
+  document.getElementById('s-docs').textContent     = fmt(s.avg_docs_retrieved, 1);
+  document.getElementById('s-chunks').textContent   = fmt(s.avg_final_chunks, 1);
+  // groundedness cards
+  document.getElementById('s-gnd-avg').textContent  = s.avg_groundedness_pct != null ? fmt(s.avg_groundedness_pct, 1) : '—';
+  document.getElementById('s-gnd-full').textContent  = fmtInt(s.fully_supported_count);
+  document.getElementById('s-gnd-unsup').textContent = fmtInt(s.unsupported_count);
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable(records) {
+  const tbody = document.getElementById('metrics-body');
+  if (!records.length) {
+    tbody.innerHTML = '<tr><td colspan="22" class="no-data">No metrics recorded yet. Run a query in the chat to see data here.</td></tr>';
+    return;
+  }
+  const rowNum = currentPage * PAGE_SIZE;
+  tbody.innerHTML = records.map((r, i) => {
+    const topSim  = r.original_similarity_scores && r.original_similarity_scores.length
+                    ? parseFloat(r.original_similarity_scores[0]).toFixed(4) : '—';
+    const topRer  = r.reranker_scores && r.reranker_scores.length
+                    ? parseFloat(r.reranker_scores[0]).toFixed(4) : '—';
+    return `<tr onclick="showDetail(${rowNum + i})" style="cursor:pointer">
+      <td>${rowNum + i + 1}</td>
+      <td style="white-space:nowrap;font-size:.72rem">${fmtTs(r.timestamp)}</td>
+      <td class="td-query"><span title="${(r.query||'').replace(/"/g,'&quot;')}">${truncate(r.query, 55)}</span></td>
+      <td>${toolBadge(r.query_classification)}</td>
+      <td>${modeBadge(r.mode)}</td>
+      <td>${toolBadge(r.tool_used)}</td>
+      <td>${cacheBadge(r.cache_hit)}</td>
+      <td>${fmt(r.retrieval_latency_ms)}</td>
+      <td>${r.num_docs_retrieved || 0}</td>
+      <td style="font-size:.75rem">${topSim}</td>
+      <td>${rerankerBadge(r.reranker_used)}</td>
+      <td style="font-size:.75rem">${topRer}</td>
+      <td>${r.num_final_chunks || 0}</td>
+      <td>${fmt(r.llm_latency_ms)}</td>
+      <td><b>${fmt(r.total_latency_ms)}</b></td>
+      <td>${fmtInt(r.prompt_tokens)}</td>
+      <td>${fmtInt(r.completion_tokens)}</td>
+      <td>${fmtInt(r.total_tokens)}</td>
+      <td style="font-size:.72rem">${r.estimated_cost_usd != null ? parseFloat(r.estimated_cost_usd).toFixed(6) : '—'}</td>
+      <td>${r.language || '—'}</td>
+      <td>${r.emotion_detected || '—'}</td>
+      <td class="gnd-score-cell">${gndBadge(r.groundedness_verdict, r.groundedness_score)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+function renderPagination() {
+  const totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+  document.getElementById('page-info').textContent = `Page ${currentPage + 1} of ${totalPages}`;
+  document.getElementById('btn-prev').disabled = currentPage === 0;
+  document.getElementById('btn-next').disabled = (currentPage + 1) * PAGE_SIZE >= totalRecords;
+}
+function prevPage() { if (currentPage > 0) { currentPage--; loadMetrics(); } }
+function nextPage() { if ((currentPage + 1) * PAGE_SIZE < totalRecords) { currentPage++; loadMetrics(); } }
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+function showDetail(idx) {
+  const r = allRecords[idx - currentPage * PAGE_SIZE];
+  if (!r) return;
+  const box = document.getElementById('detail-content');
+  function row(k, v) { return `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`; }
+  function sec(label) { return `<div class="detail-section">${label}</div>`; }
+
+  box.innerHTML = [
+    sec('Query'),
+    row('User Query', `<span style="color:var(--text)">${r.query || '—'}</span>`),
+    row('Session', r.session_name || '—'),
+    row('Timestamp', fmtTs(r.timestamp)),
+
+    sec('Classification'),
+    row('Intent', toolBadge(r.query_classification)),
+    row('Complexity', fmt(r.query_complexity, 3)),
+    row('Word Count', r.query_word_count || 0),
+
+    sec('Routing'),
+    row('Mode', modeBadge(r.mode)),
+    row('Tool Used', toolBadge(r.tool_used)),
+    row('Cache', cacheBadge(r.cache_hit)),
+
+    sec('Retrieval'),
+    row('Retrieval Latency', `${fmt(r.retrieval_latency_ms)} ms`),
+    row('Docs Retrieved', r.num_docs_retrieved || 0),
+    row('Retrieved Doc Names', (r.retrieved_doc_names||[]).join(', ') || '—'),
+    row('Similarity Scores (top-k)', scoreList(r.original_similarity_scores)),
+    row('Reranker Used', rerankerBadge(r.reranker_used)),
+    row('Reranker Scores (top-k)', scoreList(r.reranker_scores)),
+    row('Final Chunks Selected', r.num_final_chunks || 0),
+
+    sec('LLM'),
+    row('Model', r.model_name || '—'),
+    row('LLM Latency', `${fmt(r.llm_latency_ms)} ms`),
+    row('Prompt Tokens', fmtInt(r.prompt_tokens)),
+    row('Completion Tokens', fmtInt(r.completion_tokens)),
+    row('Total Tokens', fmtInt(r.total_tokens)),
+
+    sec('Cost & Totals'),
+    row('Estimated Cost', `$${r.estimated_cost_usd != null ? parseFloat(r.estimated_cost_usd).toFixed(6) : '—'}`),
+    row('Total Latency', `${fmt(r.total_latency_ms)} ms`),
+
+    sec('Context'),
+    row('Sources', (r.sources||[]).join(', ') || '—'),
+    row('Language', r.language || '—'),
+    row('Emotion Detected', r.emotion_detected || '—'),
+
+    sec('Groundedness / Hallucination Check'),
+    row('Evaluated', r.groundedness_score != null && r.groundedness_score >= 0
+          ? '<span style="color:var(--green)">Yes</span>'
+          : '<span style="color:var(--muted)">No (non-docs path)</span>'),
+    row('Groundedness Score', r.groundedness_score != null && r.groundedness_score >= 0
+          ? `<b>${Math.round(r.groundedness_score * 100)}%</b>`
+          : '—'),
+    row('Verdict', gndBadge(r.groundedness_verdict, r.groundedness_score)),
+    row('Supported Claims', r.groundedness_score >= 0 ? fmtInt(r.supported_claims) : '—'),
+    row('Unsupported Claims', r.groundedness_score >= 0
+          ? `<span style="color:${r.unsupported_claims > 0 ? 'var(--red)' : 'var(--green)'}">${fmtInt(r.unsupported_claims)}</span>`
+          : '—'),
+    row('Groundedness Latency', r.groundedness_latency_ms
+          ? `${fmt(r.groundedness_latency_ms)} ms` : '—'),
+  ].join('');
+
+  document.getElementById('detail-overlay').classList.add('open');
+}
+function closeDetail(e) {
+  if (!e || e.target === document.getElementById('detail-overlay') || e.target.classList.contains('detail-close')) {
+    document.getElementById('detail-overlay').classList.remove('open');
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail({}); });
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function startAutoRefresh() {
+  autoRefreshTimer = setInterval(loadMetrics, 15000);
+}
+function toggleAutoRefresh() {
+  autoRefreshEnabled = !autoRefreshEnabled;
+  const btn   = document.querySelector('.toolbar .btn-ghost');
+  const badge = document.getElementById('auto-badge');
+  if (autoRefreshEnabled) {
+    startAutoRefresh();
+    btn.textContent  = 'Pause';
+    badge.textContent = '● Auto-refresh 15s';
+    badge.style.color = 'var(--green)';
+  } else {
+    clearInterval(autoRefreshTimer);
+    btn.textContent  = 'Resume';
+    badge.textContent = '○ Auto-refresh off';
+    badge.style.color = 'var(--muted)';
+  }
+}
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+async function clearMetrics() {
+  if (!confirm('Delete ALL stored metrics records? This cannot be undone.')) return;
+  try {
+    const res  = await fetch('/dashboard/api/clear', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) { currentPage = 0; loadMetrics(); }
+    else alert('Clear failed: ' + data.error);
+  } catch (e) {
+    alert('Clear failed: ' + e.message);
+  }
+}
+
+// ── Session filter live search ─────────────────────────────────────────────────
+document.getElementById('session-filter').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { currentPage = 0; loadMetrics(); }
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadMetrics();
+startAutoRefresh();
+</script>
+</body>
+</html>

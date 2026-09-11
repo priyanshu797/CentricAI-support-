@@ -1,0 +1,85 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CentrixSupport — .gitignore
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets & environment ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python bytecode & caches ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── Build & distribution ──────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+MANIFEST
+
+# ── Type-checker & linter caches ──────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+*.coveragerc
+
+# ── App data — never commit runtime data or uploaded files ────────────────────
+uploads/
+storage/
+rag_storage/
+rag_cache/
+cache/
+app/cache/
+
+# ── Databases ─────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+text_hash.txt
+
+# ── Conversation exports (MongoDB is the source of truth) ─────────────────────
+conversations/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS-generated files ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE & editor files ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Jupyter Notebooks ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── HuggingFace model cache (large binary files) ─────────────────────────────
+# Models are downloaded at runtime — do not commit them.
+.cache/
+
+# Local MCP testing environment
+.mcp-test-env/

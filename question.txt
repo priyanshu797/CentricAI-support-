@@ -1,0 +1,22 @@
+web search:
+ What is the latest news on mental health treatment?
+ What are the latest stress management apps in 2025?
+
+ calculation:
+ Calculate 7 * 52 weeks of sleep hours
+
+ Search docs:
+  How much sleep should I get to reduce stress?
+
+
+I've been feeling overwhelmed and anxious about my upcoming exams, and because of that I'm having trouble sleeping and concentrating. 
+I also uploaded a document about stress management. Based specifically on the information in the uploaded document, can you identify 
+the main factors contributing to my stress, explain which techniques from the document could help me manage it, and create a simple 
+7-day plan that combines those techniques with practical daily habits? Please distinguish between what comes directly from the document 
+and any general suggestions you add.
+
+Main upcoming exams ko lekar kaafi overwhelmed aur anxious feel kar raha hoon, jiski wajah se mujhe sone aur concentrate karne mein bhi 
+problem ho rahi hai. Maine stress management ke baare mein ek document bhi upload kiya hai. Sirf us uploaded document mein di gayi information 
+ke basis par, kya aap identify kar sakte ho ki mere stress ke main factors kya hain, document mein diye gaye kaunse techniques mujhe stress 
+manage karne mein help kar sakti hain, aur un techniques ko practical daily habits ke saath combine karke ek simple 7-day plan bana sakte ho? 
+Please clearly differentiate karna ki kaunsi information directly document se li gayi hai aur kaunsi general suggestions aap add kar rahe ho.
